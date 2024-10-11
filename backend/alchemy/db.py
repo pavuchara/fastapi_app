@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )
 
-from backend.foodgram_fastapi.settings import DATABASE_URL
+from foodgram_fastapi.settings import DATABASE_URL
 
 
 engine = create_async_engine(DATABASE_URL)

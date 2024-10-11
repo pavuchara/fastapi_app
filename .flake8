@@ -12,5 +12,6 @@ exclude =
     docs/,
     frontend/,
     infra/
+    backend/migrations/*
 per-file-ignores =
     */settings.py:E501
