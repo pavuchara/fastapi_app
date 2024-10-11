@@ -7,8 +7,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-from backend.foodgram_fastapi.settings import DATABASE_URL
-from backend.alchemy.db import Base
+from models import (  # type: ignore
+    user
+)
+
+from foodgram_fastapi.settings import DATABASE_URL
+from alchemy.db import Base
 
 
 config = context.config
