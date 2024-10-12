@@ -3,7 +3,6 @@ from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
     status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,12 +13,12 @@ from shemas.user import (
     UserRetriveSchema,
 )
 from models.user import User
-from routers.services.security import AuthToken
+from routers.services.security import current_user
 from routers.services.validators import validate_user_exist
 from routers.services.security import crypt_password
 
 
-router = APIRouter(prefix="/users")
+router = APIRouter(prefix="/users", tags=["User"])
 
 
 @router.post("/", response_model=UserRetriveSchema, status_code=status.HTTP_201_CREATED)
@@ -43,6 +42,6 @@ async def create_user(
 
 @router.get("/me", response_model=UserRetriveSchema, status_code=status.HTTP_200_OK)
 async def get_current_user(
-    user: Annotated[User, Depends(AuthToken.get_user_from_token)]
+    current_user: Annotated[User, Depends(current_user)]
 ):
-    return user
+    return current_user

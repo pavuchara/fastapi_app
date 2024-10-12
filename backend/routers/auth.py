@@ -4,6 +4,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Response,
     status,
 )
 from sqlalchemy import select
@@ -18,11 +19,12 @@ from shemas.auth import (
 )
 from routers.services.security import (
     AuthToken,
+    current_user,
     verify_password,
 )
 
 
-router = APIRouter(prefix="/auth/token")
+router = APIRouter(prefix="/auth/token", tags=["Auth"])
 
 
 @router.post(
@@ -49,3 +51,17 @@ async def get_token(
         detail="Пароль/почта введены неверно или такого пользователя нет",
         status_code=status.HTTP_400_BAD_REQUEST,
     )
+
+
+@router.post(
+    "/logaut",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_user_token(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(current_user)],
+):
+    print(current_user.token)
+    await db.delete(current_user.token)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
