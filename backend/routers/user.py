@@ -5,17 +5,24 @@ from fastapi import (
     Depends,
     status,
 )
+from alchemy.db_depends import get_db
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from alchemy.db_depends import get_db
+from fastapi_pagination import Page, paginate
+
 from shemas.user import (
     UserCreationSchema,
     UserRetriveSchema,
 )
 from models.user import User
-from routers.services.security import current_user
 from routers.services.validators import validate_user_exist
-from routers.services.security import crypt_password
+from routers.services.pagination import CustomPage
+from routers.services.utils import get_object_or_404
+from routers.services.security import (
+    current_user,
+    crypt_password,
+)
 
 
 router = APIRouter(prefix="/users", tags=["User"])
@@ -40,8 +47,27 @@ async def create_user(
     return user
 
 
+@router.get("/", response_model=CustomPage[UserRetriveSchema], status_code=status.HTTP_200_OK)
+async def get_all_users(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    # _: Annotated[User, Depends(current_user)],
+):
+    users = await db.scalars(select(User))
+    return paginate(users.all())
+
+
 @router.get("/me", response_model=UserRetriveSchema, status_code=status.HTTP_200_OK)
 async def get_current_user(
     current_user: Annotated[User, Depends(current_user)]
 ):
     return current_user
+
+
+@router.get("/{user_id}", response_model=UserRetriveSchema, status_code=status.HTTP_200_OK)
+async def get_user_by_id(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(current_user)],
+):
+    user = await get_object_or_404(db, User, User.id == user_id)
+    return user
