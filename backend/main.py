@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from fastapi_pagination import add_pagination
+
 from routers import (
     auth,
     user,
@@ -7,8 +9,10 @@ from routers import (
 
 
 app = FastAPI(
-    openapi_prefix="/api"
+    root_path="/api"
 )
+
+add_pagination(app)
 
 
 app.include_router(auth.router)

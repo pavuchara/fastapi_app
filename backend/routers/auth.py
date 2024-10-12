@@ -36,6 +36,7 @@ async def get_token(
     db: Annotated[AsyncSession, Depends(get_db)],
     user_data: AuthGetTokenShcema,
 ):
+    """Получение токена по кредам пользователя."""
     user = await db.scalar(
         select(User)
         .where(User.email == user_data.email)
@@ -61,7 +62,7 @@ async def delete_user_token(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(current_user)],
 ):
-    print(current_user.token)
+    """При наличии валидного токена -> удаляем токен."""
     await db.delete(current_user.token)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

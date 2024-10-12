@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import HTTPException, status
 from pydantic import (
     BaseModel,
@@ -50,3 +52,10 @@ class UserRetriveSchema(BaseModel):
     username: str
     first_name: str
     last_name: str
+
+
+class PaginatedUserRetriveSchema(BaseModel):
+    count: int
+    next: Optional[str]
+    previous: Optional[str]
+    results: list[UserRetriveSchema]
