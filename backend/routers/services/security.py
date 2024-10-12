@@ -8,6 +8,7 @@ from fastapi import (
     status,
 )
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security.utils import get_authorization_scheme_param
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,23 +31,61 @@ def verify_password(input_password: str, having_password: str):
 
 
 class TokenAuthScheme(HTTPBearer):
+
     async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
-        credentials: HTTPAuthorizationCredentials | None = await super().__call__(request)
-        return credentials
+        """
+        Схема токена не определяется, достаточно просто получить валидный payload.
+        """
+        authorization = request.headers.get("Authorization")
+        scheme, token = get_authorization_scheme_param(authorization)
+        if scheme:
+            credentials = HTTPAuthorizationCredentials(scheme=scheme, credentials=token)
+            return credentials
+        raise HTTPException(
+            detail="Invalid authentication credentials",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
 
 
 # TODO интерфейс?
 class AuthToken:
+    """
+    Реализация работы аутентификации с токеном.
+    """
 
     @classmethod
     async def get_token(cls, db: AsyncSession, user: User) -> str:
+        """Получение токена."""
         if user.token and user.token.token:
             return user.token.token
         token = await cls.__create_token(db, user)
         return token
 
     @classmethod
+    async def get_user_from_token(
+        cls,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        token: Annotated[HTTPAuthorizationCredentials, Depends(TokenAuthScheme())],
+    ) -> User | None:
+        """Получение пользователя по предоставленному токену."""
+        request_token = token.credentials
+        user = await db.scalar(
+            select(User)
+            .join(User.token)
+            .options(selectinload(User.token))
+            .where(UserBaseToken.token == request_token)
+        )
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Необходима аутентификация",
+            )
+
+        return user
+
+    @classmethod
     async def __create_token(cls, db: AsyncSession, user: User) -> str:
+        """Создание токена в бд."""
         generated_token = await cls.__generate_token()
         token = UserBaseToken(
             token=generated_token,
@@ -58,43 +97,10 @@ class AuthToken:
 
     @classmethod
     async def __generate_token(cls) -> str:
+        """Генерация токена."""
         return secrets.token_hex(32)
 
-    @classmethod
-    async def get_user_from_token(
-        cls,
-        db: Annotated[AsyncSession, Depends(get_db)],
-        token: Annotated[HTTPAuthorizationCredentials, Depends(TokenAuthScheme())],
-    ) -> User | None:
-        request_token = token.credentials[len("Token "):]
-        db_token = await db.scalar(
-            select(UserBaseToken)
-            .where(UserBaseToken.token == request_token)
-            .options(
-                selectinload(UserBaseToken.user)
-            )
-        )
 
-        if db_token is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Неверный токен",
-            )
-
-        return db_token.user
-
-    @classmethod
-    async def authenticate_user(
-        cls,
-        db: AsyncSession,
-        email: str,
-        password: str,
-
-    ) -> User | None:
-        user = await db.scalar(
-            select(User)
-            .where(User.email == email)
-        )
-        if not user or not bcrypt_context.verify(password, user.password):
-            return None
-        return user
+async def current_user(user: Annotated[User, Depends(AuthToken.get_user_from_token)]):
+    """Просто текущий пользователь."""
+    return user
