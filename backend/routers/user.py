@@ -4,6 +4,7 @@ from fastapi import (
     APIRouter,
     Depends,
     status,
+    Request,
 )
 from alchemy.db_depends import get_db
 from sqlalchemy import select
@@ -17,7 +18,7 @@ from shemas.user import (
 )
 from models.user import User
 from routers.services.validators import validate_user_exist
-from routers.services.pagination import CustomPage
+from routers.services.pagination import CustomPage, MyPage, MyParams
 from routers.services.utils import get_object_or_404
 from routers.services.security import (
     current_user,
@@ -50,10 +51,13 @@ async def create_user(
 @router.get("/", response_model=CustomPage[UserRetriveSchema], status_code=status.HTTP_200_OK)
 async def get_all_users(
     db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request,
+    params: MyParams = Depends(),
     # _: Annotated[User, Depends(current_user)],
 ):
     users = await db.scalars(select(User))
-    return paginate(users.all())
+
+    return MyPage.create(items=users.all(), params=params, request=request)
 
 
 @router.get("/me", response_model=UserRetriveSchema, status_code=status.HTTP_200_OK)
