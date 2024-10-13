@@ -1,15 +1,14 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import (
     APIRouter,
     Depends,
     status,
+    Request,
 )
 from alchemy.db_depends import get_db
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from fastapi_pagination import Page, paginate
 
 from shemas.user import (
     UserCreationSchema,
@@ -17,7 +16,7 @@ from shemas.user import (
 )
 from models.user import User
 from routers.services.validators import validate_user_exist
-from routers.services.pagination import CustomPage
+from routers.services.pagination import CustomPage, MyPage, MyParams
 from routers.services.utils import get_object_or_404
 from routers.services.security import (
     current_user,
@@ -50,10 +49,11 @@ async def create_user(
 @router.get("/", response_model=CustomPage[UserRetriveSchema], status_code=status.HTTP_200_OK)
 async def get_all_users(
     db: Annotated[AsyncSession, Depends(get_db)],
-    # _: Annotated[User, Depends(current_user)],
+    request: Request,
+    params: MyParams = Depends(),
 ):
-    users = await db.scalars(select(User))
-    return paginate(users.all())
+    users_query = select(User)
+    return await MyPage.create(users_query, db=db, params=params, request=request)
 
 
 @router.get("/me", response_model=UserRetriveSchema, status_code=status.HTTP_200_OK)
