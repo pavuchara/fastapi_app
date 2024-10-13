@@ -10,7 +10,7 @@
     - https://uriyyo-fastapi-pagination.netlify.app/
 
 Пример использования:
-    @router.get("/", response_model=CustomPage[UserRetriveSchema], status_code=status.HTTP_200_OK)
+    @router.get("/", response_model=CustomPage[UserRetrieveSchema], status_code=status.HTTP_200_OK)
     async def get_all_users(
         db: Annotated[AsyncSession, Depends(get_db)],
         request: Request,
@@ -23,7 +23,7 @@
 
 from math import ceil
 from urllib.parse import urlencode
-from typing import Optional
+from typing import Optional, TypeVar
 
 from fastapi import Query, Request
 from pydantic import BaseModel
@@ -39,6 +39,8 @@ from fastapi_pagination.customization import (
     UseExcludedFields,
     UseFieldsAliases,
 )
+
+T = TypeVar("T")
 
 
 class MyParams(BaseModel, AbstractParams):
@@ -62,7 +64,7 @@ class MyPage(Page):
     previous: Optional[str]
 
     @classmethod
-    async def create(   # type: ignore
+    async def create(  # type: ignore
         cls,
         query,
         db: AsyncSession,
@@ -107,7 +109,7 @@ class MyPage(Page):
 
 # Кастомизация вывда страницы.
 CustomPage = CustomizedPage[
-    MyPage,
+    MyPage[T],  # type: ignore
     UseParams(MyParams),
     UseFieldsAliases(
         total="count",

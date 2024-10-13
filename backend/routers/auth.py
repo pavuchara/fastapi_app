@@ -15,7 +15,7 @@ from alchemy.db_depends import get_db
 from models.user import User
 from shemas.auth import (
     AuthGetTokenShcema,
-    AuthRetriveTokenSchema,
+    AuthRetrieveTokenSchema,
 )
 from routers.services.security import (
     AuthToken,
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/auth/token", tags=["Auth"])
 
 @router.post(
     "/login",
-    response_model=AuthRetriveTokenSchema,
+    response_model=AuthRetrieveTokenSchema,
     status_code=status.HTTP_200_OK,
 )
 async def get_token(

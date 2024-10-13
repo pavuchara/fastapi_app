@@ -6,5 +6,5 @@ class AuthGetTokenShcema(BaseModel):
     password: str
 
 
-class AuthRetriveTokenSchema(BaseModel):
+class AuthRetrieveTokenSchema(BaseModel):
     auth_token: str
