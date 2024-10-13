@@ -14,10 +14,22 @@
     async def get_all_users(
         db: Annotated[AsyncSession, Depends(get_db)],
         request: Request,
-        params: MyParams = Depends(),
+        params: Annotated[MyParams, Depends()],
     ):
         users_query = select(User)
         return await MyPage.create(users_query, db=db, params=params, request=request)
+
+Пример response:
+{
+  "count": 123,
+  "next": "http://some.com/api/some/?page=4",
+  "previous": "http://some.com/api/some/?page=2",
+  "results": [
+    {
+        ...
+    }
+  ]
+}
 """
 
 
