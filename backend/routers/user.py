@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import (
     APIRouter,
@@ -7,10 +7,8 @@ from fastapi import (
     Request,
 )
 from alchemy.db_depends import get_db
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from fastapi_pagination import Page, paginate
 
 from shemas.user import (
     UserCreationSchema,
@@ -53,11 +51,9 @@ async def get_all_users(
     db: Annotated[AsyncSession, Depends(get_db)],
     request: Request,
     params: MyParams = Depends(),
-    # _: Annotated[User, Depends(current_user)],
 ):
-    users = await db.scalars(select(User))
-
-    return MyPage.create(items=users.all(), params=params, request=request)
+    users_query = select(User)
+    return await MyPage.create(users_query, db=db, params=params, request=request)
 
 
 @router.get("/me", response_model=UserRetriveSchema, status_code=status.HTTP_200_OK)
