@@ -46,7 +46,7 @@ class UserCreationSchema(BaseModel):
             )
 
 
-class UserRetriveSchema(BaseModel):
+class UserRetrieveSchema(BaseModel):
     id: int
     email: str
     username: str
@@ -54,8 +54,8 @@ class UserRetriveSchema(BaseModel):
     last_name: str
 
 
-class PaginatedUserRetriveSchema(BaseModel):
+class PaginatedUserRetrieveSchema(BaseModel):
     count: int
     next: Optional[str]
     previous: Optional[str]
-    results: list[UserRetriveSchema]
+    results: list[UserRetrieveSchema]
