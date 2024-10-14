@@ -26,7 +26,7 @@ def crypt_password(password: str) -> str:
     return bcrypt_context.hash(password)
 
 
-def verify_password(input_password: str, having_password: str):
+def verify_password(input_password: str, having_password: str) -> bool:
     return bcrypt_context.verify(input_password, having_password)
 
 

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shemas.user import (
     UserCreationSchema,
     UserRetrieveSchema,
+    UserPasswordChangeSchema,
 )
 from models.user import User, UserSubscription
 from routers.services.validators import validate_user_exist
@@ -24,6 +25,7 @@ from routers.services.utils import get_object_or_404
 from routers.services.security import (
     current_user,
     crypt_password,
+    verify_password,
 )
 
 
@@ -66,6 +68,23 @@ async def get_current_user(
     return current_user
 
 
+@router.post("/set_password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_user_password(
+    password_data: UserPasswordChangeSchema,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(current_user)],
+):
+    if verify_password(password_data.old_password, current_user.password):
+        current_user.password = crypt_password(password_data.new_password)
+        db.add(current_user)
+        await db.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    raise HTTPException(
+        detail="Неверные данные",
+        status_code=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 @router.get(
     "/subscriptions",
     response_model=CustomPage[UserRetrieveSchema],
@@ -82,7 +101,13 @@ async def get_user_subscriptions(
         .join(UserSubscription, UserSubscription.following_id == User.id)
         .where(UserSubscription.user_id == request_user.id)
     )
-    return await MyPage.create(query, db=db, params=params, request=request)
+    paginated_data = await MyPage.create(query, db=db, params=params, request=request)
+    items = [
+        {**user.__dict__, "is_subscribed": True}
+        for user in paginated_data.items
+    ]
+    paginated_data.items = items
+    return CustomPage(**paginated_data.__dict__)
 
 
 @router.post(
@@ -103,7 +128,10 @@ async def subscribe_user(
         )
         db.add(subscription)
         await db.commit()
-        return subscribe_target
+        return {
+            **subscribe_target.__dict__,
+            "is_subscribed": True,
+        }
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -139,7 +167,17 @@ async def unsubscribe_user(
 async def get_user_by_id(
     user_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-    _: Annotated[User, Depends(current_user)],
+    request_user: Annotated[User, Depends(current_user)],
 ):
     user = await get_object_or_404(db, User, User.id == user_id)
-    return user
+    is_subscribed = await db.scalar(
+        select(UserSubscription)
+        .where(
+            UserSubscription.user_id == request_user.id,
+            UserSubscription.following_id == user.id,
+        )
+    )
+    return {
+        **user.__dict__,
+        "is_subscribed": bool(is_subscribed),
+    }
