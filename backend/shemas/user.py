@@ -1,12 +1,13 @@
-from typing import Optional
-
 from fastapi import HTTPException, status
 from pydantic import (
     BaseModel,
     ValidationInfo,
     field_validator,
 )
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.user import User, UserSubscription
 from models.services.exceptions import UserValidationException
 from models.services.validators import (
     validate_user_email,
@@ -52,10 +53,10 @@ class UserRetrieveSchema(BaseModel):
     username: str
     first_name: str
     last_name: str
+    avatar: str | None
+    is_subscribed: bool = False
 
 
-class PaginatedUserRetrieveSchema(BaseModel):
-    count: int
-    next: Optional[str]
-    previous: Optional[str]
-    results: list[UserRetrieveSchema]
+class UserPasswordChangeSchema(BaseModel):
+    new_password: str
+    old_password: str

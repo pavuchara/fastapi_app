@@ -55,7 +55,7 @@ async def get_token(
 
 
 @router.post(
-    "/logaut",
+    "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_user_token(

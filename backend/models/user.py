@@ -55,6 +55,10 @@ class User(Base):
     def validate_usernmae(self, _, value):
         return validate_username(value)
 
+    @classmethod
+    def some(cls):
+        return True
+
 
 class UserBaseToken(Base):
     __tablename__ = "users_tokens"
