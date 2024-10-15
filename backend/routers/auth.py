@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from alchemy.db_depends import get_db
 from models.user import User
-from shemas.auth import (
+from schemas.auth import (
     AuthGetTokenShcema,
     AuthRetrieveTokenSchema,
 )
