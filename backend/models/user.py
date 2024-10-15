@@ -30,6 +30,11 @@ class User(Base):
     last_name: Mapped[str] = mapped_column(String(150))
     avatar: Mapped[str] = mapped_column(String(255), nullable=True)
     # Relationships:
+    recipe = relationship(
+        "models.recipe.Recipe",
+        back_populates="author",
+        cascade="all, delete-orphan",
+    )
     token = relationship(
         "UserBaseToken",
         uselist=False,
