@@ -7,6 +7,7 @@ from fastapi import (
     Response,
     Request,
     status,
+    Path
 )
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -123,7 +124,7 @@ async def create_recipe(
 
 @router.get("/{recope_id}", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
 async def get_recipe(
-    recipe_id: int,
+    recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):
@@ -142,7 +143,7 @@ async def get_recipe(
 
 @router.patch("/{recipe_id}", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
 async def update_recipe(
-    recipe_id: int,
+    recipe_id: Annotated[int, Path()],
     recipe_request_data: RecipeCreateSchema,
     request_user: Annotated[User, Depends(current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -171,7 +172,7 @@ async def update_recipe(
 
 @router.delete("/{recipe_id}")
 async def delete_recipe(
-    recipe_id: int,
+    recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):
@@ -191,7 +192,7 @@ async def delete_recipe(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_recipe_to_shopping_cart(
-    recipe_id: int,
+    recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):
@@ -213,7 +214,7 @@ async def add_recipe_to_shopping_cart(
 
 @router.delete("/{recipe_id}/shopping_cart/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_recipe_from_shopping_cart(
-    recipe_id: int,
+    recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):
@@ -238,7 +239,7 @@ async def delete_recipe_from_shopping_cart(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_recipe_to_favorite(
-    recipe_id: int,
+    recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):
@@ -260,7 +261,7 @@ async def add_recipe_to_favorite(
 
 @router.delete("/{recipe_id}/favorite", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_recipe_from_favorites(
-    recipe_id: int,
+    recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):

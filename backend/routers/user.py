@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
+    Path,
     status,
     Request,
     Response,
@@ -17,6 +18,7 @@ from schemas.user import (
     UserCreationSchema,
     UserRetrieveSchema,
     UserPasswordChangeSchema,
+    UserRetriveCreateAvatar,
 )
 from models.user import User, UserSubscription
 from routers.services.validators import validate_user_exist
@@ -68,6 +70,29 @@ async def get_current_user(
     return current_user
 
 
+@router.put("/me/avatar", response_model=UserRetriveCreateAvatar, status_code=status.HTTP_200_OK)
+async def creaete_user_avatar(
+    avatar_data: UserRetriveCreateAvatar,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request_user: Annotated[User, Depends(current_user)],
+):
+    request_user.avatar = avatar_data.avatar
+    db.add(request_user)
+    await db.commit()
+    return avatar_data
+
+
+@router.delete("/me/avatar", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_avatar(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request_user: Annotated[User, Depends(current_user)],
+):
+    request_user.avatar = None
+    db.add(request_user)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/set_password", status_code=status.HTTP_204_NO_CONTENT)
 async def change_user_password(
     password_data: UserPasswordChangeSchema,
@@ -116,7 +141,7 @@ async def get_user_subscriptions(
     status_code=status.HTTP_201_CREATED,
 )
 async def subscribe_user(
-    user_id: int,
+    user_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)]
 ):
@@ -141,7 +166,7 @@ async def subscribe_user(
 
 @router.delete("/{user_id}/subscribe", status_code=status.HTTP_204_NO_CONTENT)
 async def unsubscribe_user(
-    user_id: int,
+    user_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)]
 ):
@@ -165,7 +190,7 @@ async def unsubscribe_user(
 
 @router.get("/{user_id}", response_model=UserRetrieveSchema, status_code=status.HTTP_200_OK)
 async def get_user_by_id(
-    user_id: int,
+    user_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):

@@ -3,7 +3,8 @@ from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
-    Request,
+    Query,
+    Path,
     status,
 )
 from sqlalchemy import select
@@ -17,11 +18,6 @@ from schemas.core import (
     TagRetrieveSchema,
     IngredientCreateSchema,
     IngredientRetrieveSchema,
-)
-from routers.services.pagination import (
-    MyPage,
-    MyParams,
-    CustomPage,
 )
 from routers.services.utils import get_object_or_404
 from routers.services.security import current_user
@@ -48,21 +44,19 @@ async def create_tag(
 
 @router.get(
     "/tags",
-    response_model=CustomPage[TagRetrieveSchema],
+    response_model=list[TagRetrieveSchema],
     status_code=status.HTTP_200_OK,
 )
 async def get_all_tags(
     db: Annotated[AsyncSession, Depends(get_db)],
-    request: Request,
-    request_query_params: Annotated[MyParams, Depends()],
 ):
-    query = select(Tag)
-    return await MyPage.create(query, db=db, params=request_query_params, request=request)
+    tags = await db.scalars(select(Tag))
+    return tags.all()
 
 
 @router.get("/tags/{tag_id}", response_model=TagRetrieveSchema, status_code=status.HTTP_200_OK)
 async def get_tag(
-    tag_id: int,
+    tag_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     tag = await get_object_or_404(db, Tag, Tag.id == tag_id)
@@ -91,16 +85,21 @@ async def create_ingredient(
 
 @router.get(
     "/ingredients",
-    response_model=CustomPage[IngredientRetrieveSchema],
+    response_model=list[IngredientRetrieveSchema],
     status_code=status.HTTP_200_OK,
 )
 async def get_all_ingredients(
     db: Annotated[AsyncSession, Depends(get_db)],
-    request_query_params: Annotated[MyParams, Depends()],
-    request: Request,
+    request_query_params: Annotated[str | None, Query()] = None,
 ):
-    query = select(Ingredient)
-    return await MyPage.create(query, db=db, request=request, params=request_query_params)
+    if request_query_params:
+        ingredients = await db.scalars(
+            select(Ingredient)
+            .where(Ingredient.name.contains(request_query_params))
+        )
+    else:
+        ingredients = await db.scalars(select(Ingredient))
+    return ingredients.all()
 
 
 @router.get(
@@ -109,7 +108,7 @@ async def get_all_ingredients(
     status_code=status.HTTP_200_OK,
 )
 async def get_ingredient(
-    ingredient_id: int,
+    ingredient_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     ingredient = await get_object_or_404(db, Ingredient, Ingredient.id == ingredient_id)

@@ -4,6 +4,7 @@ from sqlalchemy import (
     ForeignKey,
     UniqueConstraint,
     CheckConstraint,
+    TEXT,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -28,7 +29,7 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(150))
     first_name: Mapped[str] = mapped_column(String(150))
     last_name: Mapped[str] = mapped_column(String(150))
-    avatar: Mapped[str] = mapped_column(String(255), nullable=True)
+    avatar: Mapped[str | None] = mapped_column(TEXT, nullable=True)
     # Relationships:
     recipe = relationship(
         "models.recipe.Recipe",

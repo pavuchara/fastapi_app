@@ -57,3 +57,7 @@ class UserRetrieveSchema(BaseModel):
 class UserPasswordChangeSchema(BaseModel):
     new_password: str
     old_password: str
+
+
+class UserRetriveCreateAvatar(BaseModel):
+    avatar: str

@@ -3,6 +3,7 @@ from sqlalchemy import (
     String,
     ForeignKey,
     UniqueConstraint,
+    TEXT
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -25,7 +26,7 @@ class Recipe(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     author_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(256))
-    image: Mapped[str] = mapped_column(String(255), nullable=True)
+    image: Mapped[str | None] = mapped_column(TEXT, nullable=True)
     text: Mapped[str] = mapped_column(String(1000))
     cooking_time: Mapped[int] = mapped_column(Integer)
     # Relationships:
