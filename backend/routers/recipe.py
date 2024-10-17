@@ -9,11 +9,10 @@ from fastapi import (
     status,
 )
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from alchemy.db_depends import get_db
-from models.user import User, UserSubscription
+from models.user import User
 from models.core import Tag, Ingredient
 from models.recipe import Recipe, RecipeTag, RecipeIngredient
 from schemas.recipe import (
@@ -24,6 +23,10 @@ from routers.services.pagination import (
     MyPage,
     MyParams,
     CustomPage,
+)
+from models.services.queries import (
+    RecipeResponseDataPreparer,
+    RecipeUpdator,
 )
 from routers.services.utils import get_object_or_404
 from routers.services.security import current_user
@@ -39,52 +42,15 @@ async def get_all_recipes(
     request: Request,
     request_user: Annotated[User, Depends(current_user)],
 ):
-    query = (
-        select(Recipe)
-        .options(
-            selectinload(Recipe.author),
-            selectinload(Recipe.tags).joinedload(RecipeTag.tag),
-            selectinload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient),
-        )
-    )
+    recipe_data_preparer = RecipeResponseDataPreparer(db)
+    recipe_query = await recipe_data_preparer.get_related_query_list()
     paginated_data = await MyPage.create(
-        query, db=db, params=pagnination_query_params, request=request
+        recipe_query, db=db, params=pagnination_query_params, request=request
     )
 
     items = []
     for recipe in paginated_data.items:
-        data = {**recipe.__dict__}
-        following = await db.scalar(
-            select(UserSubscription)
-            .where(
-                UserSubscription.user_id == request_user.id,
-                UserSubscription.following_id == recipe.author.id,
-            )
-        )
-        data.update(
-            {
-                **recipe.author.__dict__,
-                "is_subscribed": bool(following),
-            }
-        )
-        ingredients = await db.scalars(
-            select(Ingredient)
-            .where(Ingredient.id.in_([ing.id for ing in recipe.ingredients]))
-        )
-        response_ingredients = [
-            {
-                "id": ingredient.id,
-                "name": ingredient.name,
-                "measure_unit": ingredient.measurement_unit,
-                "amount": next(
-                    ing.amount for ing in recipe.ingredients
-                    if ing.ingredient_id == ingredient.id
-                ),
-            }
-            for ingredient in ingredients.all()
-        ]
-        data.update({"ingredients": response_ingredients})
-        data.update({"tags": [recipe_tag.tag for recipe_tag in recipe.tags]})
+        data = await recipe_data_preparer.get_related_data_from_instance(recipe, request_user)
         items.append(data)
     paginated_data.items = items
     return CustomPage(**paginated_data.__dict__)
@@ -153,14 +119,52 @@ async def create_recipe(
     }
 
 
-@router.get("/{recope_id}")
-async def get_recipe():
-    pass
+@router.get("/{recope_id}", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
+async def get_recipe(
+    recipe_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request_user: Annotated[User, Depends(current_user)],
+):
+    recipe_data_preparer = RecipeResponseDataPreparer(db)
+    recipe = await recipe_data_preparer.get_related_inctance_by_id(recipe_id)
+    if recipe:
+        response_data = (
+            await recipe_data_preparer.get_related_data_from_instance(recipe, request_user)
+        )
+        return response_data
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Такого рецепта нет",
+    )
 
 
-@router.patch("/{recipe_id}")
-async def update_recipe():
-    pass
+@router.patch("/{recipe_id}", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
+async def update_recipe(
+    recipe_id: int,
+    recipe_request_data: RecipeCreateSchema,
+    request_user: Annotated[User, Depends(current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    recipe_data_preparer = RecipeResponseDataPreparer(db)
+    request_recipe = await recipe_data_preparer.get_related_inctance_by_id(recipe_id)
+    if not request_recipe:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Нет такого рецепта.",
+        )
+    if request_recipe and request_recipe.author != request_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Только для автора.",
+        )
+    recipe_updator = RecipeUpdator(db)
+    updated_recipe: Recipe = (
+        await recipe_updator.update_recipe_with_related_fields(request_recipe, recipe_request_data)
+    )
+    response_data = (
+        await recipe_data_preparer.get_related_data_from_instance(updated_recipe, request_user)
+    )
+    return response_data
 
 
 @router.delete("/{recipe_id}")
