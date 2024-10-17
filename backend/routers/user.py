@@ -8,12 +8,12 @@ from fastapi import (
     Response,
     HTTPException,
 )
-from alchemy.db_depends import get_db
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shemas.user import (
+from alchemy.db_depends import get_db
+from schemas.user import (
     UserCreationSchema,
     UserRetrieveSchema,
     UserPasswordChangeSchema,

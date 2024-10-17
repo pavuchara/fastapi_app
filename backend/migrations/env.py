@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from models import (  # type: ignore
-    user
+    user,
+    core,
+    recipe
 )
 
 from foodgram_fastapi.settings import DATABASE_URL
