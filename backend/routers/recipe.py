@@ -9,15 +9,17 @@ from fastapi import (
     status,
 )
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from alchemy.db_depends import get_db
-from models.user import User
+from models.user import User, UserShoppingList, UserFavorites
 from models.core import Tag, Ingredient
 from models.recipe import Recipe, RecipeTag, RecipeIngredient
 from schemas.recipe import (
     RecipeCreateSchema,
     RecipeRetrieveSchema,
+    RecipeSimpleRetriveSchema,
 )
 from routers.services.pagination import (
     MyPage,
@@ -181,6 +183,100 @@ async def delete_recipe(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Доступно только автору",
     )
+
+
+@router.post(
+    "/{recipe_id}/shopping_cart",
+    response_model=RecipeSimpleRetriveSchema,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_recipe_to_shopping_cart(
+    recipe_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request_user: Annotated[User, Depends(current_user)],
+):
+    recipe = await get_object_or_404(db, Recipe, Recipe.id == recipe_id)
+    shopping_list = UserShoppingList(
+        user_id=request_user.id,
+        recipe_id=recipe.id,
+    )
+    try:
+        db.add(shopping_list)
+        await db.commit()
+        return recipe
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Уже в корзине",
+        )
+
+
+@router.delete("/{recipe_id}/shopping_cart/", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_recipe_from_shopping_cart(
+    recipe_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request_user: Annotated[User, Depends(current_user)],
+):
+    recipe = await get_object_or_404(db, Recipe, Recipe.id == recipe_id)
+    shopping_list = await db.scalar(
+        select(UserShoppingList)
+        .where(
+            UserShoppingList.user_id == request_user.id,
+            UserShoppingList.recipe_id == recipe.id,
+        )
+    )
+    if shopping_list:
+        await db.delete(shopping_list)
+        await db.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+
+@router.post(
+    "/{recipe_id}/favorite",
+    response_model=RecipeSimpleRetriveSchema,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_recipe_to_favorite(
+    recipe_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request_user: Annotated[User, Depends(current_user)],
+):
+    recipe = await get_object_or_404(db, Recipe, Recipe.id == recipe_id)
+    favorite_list = UserFavorites(
+        user_id=request_user.id,
+        recipe_id=recipe.id,
+    )
+    try:
+        db.add(favorite_list)
+        await db.commit()
+        return recipe
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Уже в избранном",
+        )
+
+
+@router.delete("/{recipe_id}/favorite", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_recipe_from_favorites(
+    recipe_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request_user: Annotated[User, Depends(current_user)],
+):
+    recipe = await get_object_or_404(db, Recipe, Recipe.id == recipe_id)
+    favorite_list = await db.scalar(
+        select(UserFavorites)
+        .where(
+            UserFavorites.user_id == request_user.id,
+            UserFavorites.recipe_id == recipe.id
+        )
+    )
+    if favorite_list:
+        await db.delete(favorite_list)
+        await db.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
 @router.get("/{recipe_id}/get-link/")

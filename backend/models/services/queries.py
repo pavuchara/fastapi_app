@@ -8,6 +8,8 @@ from models.core import Ingredient, Tag
 from models.user import (
     User,
     UserSubscription,
+    UserFavorites,
+    UserShoppingList,
 )
 from models.recipe import (
     Recipe,
@@ -70,9 +72,24 @@ class RecipeResponseDataPreparer:
             }
             for ingredient in ingredients.all()
         ]
-        print(recipe.ingredients)
         data.update({"ingredients": response_ingredients})
-        data.update({"tags": [recipe_tag.tag for recipe_tag in recipe.tags]})
+        data.update({"tags": recipe.tag_list})
+        is_favorited = await self.db.scalar(
+            select(UserFavorites)
+            .where(
+                UserFavorites.user_id == request_user.id,
+                UserFavorites.recipe_id == recipe.id,
+            )
+        )
+        is_in_shopping_cart = await self.db.scalar(
+            select(UserShoppingList)
+            .where(
+                UserShoppingList.user_id == request_user.id,
+                UserShoppingList.recipe_id == recipe.id,
+            )
+        )
+        data.update({"is_favorited": bool(is_favorited)})
+        data.update({"is_in_shopping_cart": bool(is_in_shopping_cart)})
         return data
 
     async def get_related_inctance_by_id(self, recipe_id: int) -> Recipe | None:

@@ -34,3 +34,12 @@ class RecipeRetrieveSchema(BaseModel):
     image: str | None
     text: str
     cooking_time: int
+    is_favorited: bool = False
+    is_in_shopping_cart: bool = False
+
+
+class RecipeSimpleRetriveSchema(BaseModel):
+    id: int
+    name: str
+    image: str | None
+    cooking_time: int

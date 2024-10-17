@@ -43,10 +43,24 @@ class Recipe(Base):
         back_populates="recipe",
         cascade="all, delete-orphan",
     )
+    favorited_by_users = relationship(
+        "models.user.UserFavorites",
+        back_populates="favoreted_recipes",
+        cascade="all, delete-orphan",
+    )
+    shopping_list_users = relationship(
+        "models.user.UserShoppingList",
+        back_populates="recipes_in_shopping_list",
+        cascade="all, delete-orphan"
+    )
 
     @validates("cooking_time")
     def validate_cooking_time(self, _, value):
         return validate_recipe_cooking_time(value)
+
+    @property
+    def tag_list(self):
+        return [recipe_tag.tag for recipe_tag in self.tags]
 
 
 class RecipeTag(Base):

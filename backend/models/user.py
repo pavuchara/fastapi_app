@@ -45,11 +45,25 @@ class User(Base):
         "UserSubscription",
         foreign_keys="[UserSubscription.user_id]",
         back_populates="user",
+        cascade="all, delete-orphan",
     )
     followers = relationship(
         "UserSubscription",
         foreign_keys="[UserSubscription.following_id]",
         back_populates="following",
+        cascade="all, delete-orphan",
+    )
+    user_favorites = relationship(
+        "UserFavorites",
+        foreign_keys="[UserFavorites.user_id]",
+        back_populates="favoreted_users",
+        cascade="all, delete-orphan",
+    )
+    shopping_list = relationship(
+        "UserShoppingList",
+        foreign_keys="[UserShoppingList.user_id]",
+        back_populates="users_shopped",
+        cascade="all, delete-orphan"
     )
 
     @validates("email")
@@ -95,4 +109,48 @@ class UserSubscription(Base):
         "models.user.User",
         foreign_keys=[following_id],
         back_populates="followers",
+    )
+
+
+class UserFavorites(Base):
+    __tablename__ = "user_favorites"
+    __table_args__ = (
+        UniqueConstraint("user_id", "recipe_id", name="unique_user_favorites"),
+    )
+    # Fields:
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("recipes.id"))
+    # Relationsips:
+    favoreted_users = relationship(
+        "models.user.User",
+        foreign_keys=[user_id],
+        back_populates="user_favorites"
+    )
+    favoreted_recipes = relationship(
+        "models.recipe.Recipe",
+        foreign_keys=[recipe_id],
+        back_populates="favorited_by_users"
+    )
+
+
+class UserShoppingList(Base):
+    __tablename__ = "user_shopping_list"
+    __table_args__ = (
+        UniqueConstraint("user_id", "recipe_id", name="unique_user_shopping_list"),
+    )
+    # Fields:
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("recipes.id"))
+    # Relationships:
+    users_shopped = relationship(
+        "models.user.User",
+        foreign_keys=[user_id],
+        back_populates="shopping_list"
+    )
+    recipes_in_shopping_list = relationship(
+        "models.recipe.Recipe",
+        foreign_keys=[recipe_id],
+        back_populates="shopping_list_users",
     )
