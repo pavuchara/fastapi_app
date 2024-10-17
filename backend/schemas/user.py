@@ -4,10 +4,7 @@ from pydantic import (
     ValidationInfo,
     field_validator,
 )
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.user import User, UserSubscription
 from models.services.exceptions import UserValidationException
 from models.services.validators import (
     validate_user_email,

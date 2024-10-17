@@ -11,6 +11,8 @@ from .user import (
     User,
     UserBaseToken,
     UserSubscription,
+    UserFavorites,
+    UserShoppingList,
 )
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "Ingredient",
     "UserBaseToken",
     "UserSubscription",
+    "UserFavorites",
+    "UserShoppingList",
 ]
