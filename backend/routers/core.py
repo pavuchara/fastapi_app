@@ -51,8 +51,19 @@ async def get_all_tags(
     return await tag_repository.get_all_tags()
 
 
-@router.get("/tags/{tag_id}", response_model=TagRetrieveSchemafrom sqlalchemy import select
+@router.get("/tags/{tag_id}", response_model=TagRetrieveSchema, status_code=status.HTTP_200_OK)
+async def get_tag(
+    tag_id: Annotated[int, Path()],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return await get_object_or_404(db, Tag, Tag.id == tag_id)
 
+
+@router.post(
+    "/ingredients",
+    response_model=IngredientRetrieveSchema,
+    status_code=status.HTTP_200_OK,
+)
 async def create_ingredient(
     ingredient_data: IngredientCreateSchema,
     db: Annotated[AsyncSession, Depends(get_db)],
