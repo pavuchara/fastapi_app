@@ -18,6 +18,7 @@ from schemas.user import (
 
 
 class UserRepository:
+    """Репозиторий работы с пользователями."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -130,6 +131,7 @@ class UserRepository:
 
 
 class UserShoppingListRepository:
+    """Репозиторий работы со списком покупок пользователя."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -159,6 +161,7 @@ class UserShoppingListRepository:
 
 
 class UserFavoritesRepository:
+    """Репозиторий работы со списком избранного."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -188,6 +191,7 @@ class UserFavoritesRepository:
 
 
 class UserSubscriptionRepository:
+    """Репозиторий работы с подписками."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class AuthGetTokenShcema(BaseModel):
+class AuthGetTokenSchema(BaseModel):
     email: str
     password: str
 

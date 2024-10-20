@@ -20,6 +20,7 @@ from schemas.recipe import RecipeCreateSchema, RecipeFilters
 
 
 class RecipeRepository:
+    """Репозиторий работы с рецептами."""
 
     def __init__(self, db: AsyncSession):
         self.db = db

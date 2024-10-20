@@ -84,6 +84,7 @@ class MyPage(Page):
         params: MyParams,
         request: Request,
     ) -> "MyPage":
+        """Базовая реализация, не требует ничего кроме сформированного query."""
         total = await db.scalar(select(func.count()).select_from(query.subquery()))
         items_query = query.limit(params.limit).offset(params.to_raw_params().offset)
         items = await db.scalars(items_query)
@@ -97,6 +98,12 @@ class MyPage(Page):
         request_user: User,
         repository,
     ) -> "MyPage":
+        """
+        Реализация для репозитория инстанса.
+        `repository` должен иметь след. методы:
+            - get_all_instanses_limit_offset
+            - to_shema
+        """
         total = await repository.get_total()
         items_query = await repository.get_all_instanses_limit_offset(
             request_user,
