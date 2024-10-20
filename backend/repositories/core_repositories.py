@@ -11,6 +11,7 @@ from schemas.core import (
 
 
 class TagRepository:
+    """Репозиторий работы с тегами."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -31,6 +32,7 @@ class TagRepository:
 
 
 class IngredientRepository:
+    """Репозиторий работы с ингредиентами."""
 
     def __init__(self, db: AsyncSession):
         self.db = db

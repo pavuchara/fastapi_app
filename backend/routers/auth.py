@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from alchemy.db_depends import get_db
 from models.user import User
 from schemas.auth import (
-    AuthGetTokenShcema,
+    AuthGetTokenSchema,
     AuthRetrieveTokenSchema,
 )
 from routers.services.security import (
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/auth/token", tags=["Auth"])
 )
 async def get_token(
     db: Annotated[AsyncSession, Depends(get_db)],
-    user_data: AuthGetTokenShcema,
+    user_data: AuthGetTokenSchema,
 ):
     """Получение токена по кредам пользователя."""
     user = await db.scalar(

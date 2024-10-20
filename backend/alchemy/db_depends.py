@@ -6,6 +6,7 @@ from alchemy.db import async_session_maker
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Генератор асингхронной сессии, при возникновении ошибок, транзакция роллбекается."""
     async with async_session_maker() as session:
         try:
             yield session
