@@ -7,7 +7,6 @@ from fastapi import (
     Path,
     status,
 )
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from alchemy.db_depends import get_db
@@ -18,6 +17,10 @@ from schemas.core import (
     TagRetrieveSchema,
     IngredientCreateSchema,
     IngredientRetrieveSchema,
+)
+from repositories.core_repositories import (
+    TagRepository,
+    IngredientRepository,
 )
 from routers.services.utils import get_object_or_404
 from routers.services.security import current_user
@@ -32,14 +35,8 @@ async def create_tag(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(current_user)],
 ):
-    tag = Tag(
-        name=tag_data.name,
-        slug=tag_data.slug,
-    )
-    db.add(tag)
-    await db.commit()
-    await db.refresh(tag)
-    return tag
+    tag_repository = TagRepository(db)
+    return await tag_repository.create_tag(tag_data)
 
 
 @router.get(
@@ -50,8 +47,8 @@ async def create_tag(
 async def get_all_tags(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    tags = await db.scalars(select(Tag))
-    return tags.all()
+    tag_repository = TagRepository(db)
+    return await tag_repository.get_all_tags()
 
 
 @router.get("/tags/{tag_id}", response_model=TagRetrieveSchema, status_code=status.HTTP_200_OK)
@@ -59,8 +56,7 @@ async def get_tag(
     tag_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    tag = await get_object_or_404(db, Tag, Tag.id == tag_id)
-    return tag
+    return await get_object_or_404(db, Tag, Tag.id == tag_id)
 
 
 @router.post(
@@ -73,14 +69,8 @@ async def create_ingredient(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(current_user)],
 ):
-    ingredient = Ingredient(
-        name=ingredient_data.name,
-        measurement_unit=ingredient_data.measurement_unit,
-    )
-    db.add(ingredient)
-    await db.commit()
-    await db.refresh(ingredient)
-    return ingredient
+    ingredient_repository = IngredientRepository(db)
+    return await ingredient_repository.create_ingredient(ingredient_data)
 
 
 @router.get(
@@ -92,14 +82,8 @@ async def get_all_ingredients(
     db: Annotated[AsyncSession, Depends(get_db)],
     request_query_params: Annotated[str | None, Query()] = None,
 ):
-    if request_query_params:
-        ingredients = await db.scalars(
-            select(Ingredient)
-            .where(Ingredient.name.contains(request_query_params))
-        )
-    else:
-        ingredients = await db.scalars(select(Ingredient))
-    return ingredients.all()
+    ingredient_repository = IngredientRepository(db)
+    return await ingredient_repository.get_all_ibgredients(request_query_params)
 
 
 @router.get(
@@ -111,5 +95,4 @@ async def get_ingredient(
     ingredient_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    ingredient = await get_object_or_404(db, Ingredient, Ingredient.id == ingredient_id)
-    return ingredient
+    return await get_object_or_404(db, Ingredient, Ingredient.id == ingredient_id)

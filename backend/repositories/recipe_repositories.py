@@ -19,7 +19,7 @@ from models.recipe import (
 from schemas.recipe import RecipeCreateSchema
 
 
-class RecipeResponseDataPreparer:
+class RecipeRepository:
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -35,7 +35,66 @@ class RecipeResponseDataPreparer:
         )
         return query
 
-    async def get_related_data_from_instance(
+    async def get_related_instance_by_id(self, recipe_id: int) -> Recipe | None:
+        recipe = await self.db.scalar(
+            select(Recipe)
+            .where(Recipe.id == recipe_id)
+            .options(
+                selectinload(Recipe.author),
+                selectinload(Recipe.tags).joinedload(RecipeTag.tag),
+                selectinload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient),
+            )
+        )
+        return recipe
+
+    async def delete_recipe(self, recipe: Recipe, request_user: User) -> bool:
+        if recipe.author_id == request_user.id:
+            await self.db.delete(recipe)
+            await self.db.commit()
+            return True
+        return False
+
+    async def create_recipe(self, recipe_data: RecipeCreateSchema, request_user: User) -> Recipe:
+        tags = await self.db.scalars(select(Tag).where(Tag.id.in_(recipe_data.tags)))
+        ingredients = await self.db.scalars(
+            select(Ingredient)
+            .where(Ingredient.id.in_([ingredient.id for ingredient in recipe_data.ingredients]))
+        )
+        tags_instances = tags.all()
+        ingredients_instances = ingredients.all()
+
+        recipe = Recipe(
+            author_id=request_user.id,
+            name=recipe_data.name,
+            image=recipe_data.image,
+            text=recipe_data.text,
+            cooking_time=recipe_data.cooking_time,
+        )
+        self.db.add(recipe)
+        await self.db.commit()
+        await self.db.refresh(recipe)
+
+        recipe_tags = [RecipeTag(recipe_id=recipe.id, tag_id=tag.id) for tag in tags_instances]
+        self.db.add_all(recipe_tags)
+        await self.db.commit()
+
+        added_ingredients = [
+            RecipeIngredient(
+                recipe_id=recipe.id,
+                ingredient_id=ingredient.id,
+                amount=next(
+                    request_ingredient.amount for request_ingredient in recipe_data.ingredients
+                    if request_ingredient.id == ingredient.id
+                )
+            )
+            for ingredient in ingredients_instances
+        ]
+        self.db.add_all(added_ingredients)
+        await self.db.commit()
+        await self.db.refresh(recipe)
+        return await self.get_related_instance_by_id(recipe.id)  # type: ignore
+
+    async def to_schema_from_related_instance(
         self,
         recipe: Recipe,
         request_user: User,
@@ -48,14 +107,8 @@ class RecipeResponseDataPreparer:
                 UserSubscription.following_id == recipe.author.id,
             )
         )
-        data.update(
-            {
-                "author": {
-                    **recipe.author.__dict__,
-                    "is_subscribed": bool(following),
-                }
-            }
-        )
+        data.update({"author": {**recipe.author.__dict__, "is_subscribed": bool(following)}})
+
         ingredients = await self.db.scalars(
             select(Ingredient)
             .where(Ingredient.id.in_([ing.ingredient_id for ing in recipe.ingredients]))
@@ -74,6 +127,7 @@ class RecipeResponseDataPreparer:
         ]
         data.update({"ingredients": response_ingredients})
         data.update({"tags": recipe.tag_list})
+
         is_favorited = await self.db.scalar(
             select(UserFavorites)
             .where(
@@ -81,6 +135,8 @@ class RecipeResponseDataPreparer:
                 UserFavorites.recipe_id == recipe.id,
             )
         )
+        data.update({"is_favorited": bool(is_favorited)})
+
         is_in_shopping_cart = await self.db.scalar(
             select(UserShoppingList)
             .where(
@@ -88,27 +144,8 @@ class RecipeResponseDataPreparer:
                 UserShoppingList.recipe_id == recipe.id,
             )
         )
-        data.update({"is_favorited": bool(is_favorited)})
         data.update({"is_in_shopping_cart": bool(is_in_shopping_cart)})
         return data
-
-    async def get_related_inctance_by_id(self, recipe_id: int) -> Recipe | None:
-        recipe = await self.db.scalar(
-            select(Recipe)
-            .where(Recipe.id == recipe_id)
-            .options(
-                selectinload(Recipe.author),
-                selectinload(Recipe.tags).joinedload(RecipeTag.tag),
-                selectinload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient),
-            )
-        )
-        return recipe
-
-
-class RecipeUpdator:
-
-    def __init__(self, db: AsyncSession):
-        self.db = db
 
     async def update_recipe_with_related_fields(
         self,
@@ -127,7 +164,7 @@ class RecipeUpdator:
         await self.db.refresh(recipe)
 
         recipe.name = recipe_data.name
-        recipe.image = recipe_data.image  # type: ignore
+        recipe.image = recipe_data.image
         recipe.text = recipe_data.text
         recipe.cooking_time = recipe_data.cooking_time
         self.db.add(recipe)

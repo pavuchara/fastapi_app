@@ -18,17 +18,14 @@ from schemas.user import (
     UserCreationSchema,
     UserRetrieveSchema,
     UserPasswordChangeSchema,
-    UserRetriveCreateAvatar,
+    UserAvatarSchema,
 )
 from models.user import User, UserSubscription
+from repositories.user_repositories import UserRepository
 from routers.services.validators import validate_user_exist
 from routers.services.pagination import CustomPage, MyPage, MyParams
 from routers.services.utils import get_object_or_404
-from routers.services.security import (
-    current_user,
-    crypt_password,
-    verify_password,
-)
+from routers.services.security import current_user
 
 
 router = APIRouter(prefix="/users", tags=["User"])
@@ -40,17 +37,8 @@ async def create_user(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     await validate_user_exist(db, user_email=user_data.email, username=user_data.username)
-    user = User(
-        email=user_data.email,
-        username=user_data.username,
-        password=crypt_password(user_data.password),
-        first_name=user_data.first_name,
-        last_name=user_data.last_name,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
+    user_repository = UserRepository(db)
+    return await user_repository.create_user(user_data)
 
 
 @router.get("/", response_model=CustomPage[UserRetrieveSchema], status_code=status.HTTP_200_OK)
@@ -58,9 +46,16 @@ async def get_all_users(
     db: Annotated[AsyncSession, Depends(get_db)],
     request: Request,
     params: Annotated[MyParams, Depends()],
+    request_user: Annotated[User, Depends(current_user)],
 ):
-    users_query = select(User)
-    return await MyPage.create(users_query, db=db, params=params, request=request)
+    user_repository = UserRepository(db)
+    paginated_data = await MyPage.create_with_repository(
+        params=params,
+        request=request,
+        request_user=request_user,
+        repository=user_repository,
+    )
+    return CustomPage(**paginated_data.__dict__)
 
 
 @router.get("/me", response_model=UserRetrieveSchema, status_code=status.HTTP_200_OK)
@@ -70,16 +65,14 @@ async def get_current_user(
     return current_user
 
 
-@router.put("/me/avatar", response_model=UserRetriveCreateAvatar, status_code=status.HTTP_200_OK)
+@router.put("/me/avatar", response_model=UserAvatarSchema, status_code=status.HTTP_200_OK)
 async def creaete_user_avatar(
-    avatar_data: UserRetriveCreateAvatar,
+    avatar_data: UserAvatarSchema,
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):
-    request_user.avatar = avatar_data.avatar
-    db.add(request_user)
-    await db.commit()
-    return avatar_data
+    user_repository = UserRepository(db)
+    return await user_repository.add_avatar(request_user, avatar_data)
 
 
 @router.delete("/me/avatar", status_code=status.HTTP_204_NO_CONTENT)
@@ -87,9 +80,8 @@ async def delete_user_avatar(
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):
-    request_user.avatar = None
-    db.add(request_user)
-    await db.commit()
+    user_repository = UserRepository(db)
+    await user_repository.delete_avatar(request_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -97,12 +89,10 @@ async def delete_user_avatar(
 async def change_user_password(
     password_data: UserPasswordChangeSchema,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(current_user)],
+    request_user: Annotated[User, Depends(current_user)],
 ):
-    if verify_password(password_data.old_password, current_user.password):
-        current_user.password = crypt_password(password_data.new_password)
-        db.add(current_user)
-        await db.commit()
+    user_repository = UserRepository(db)
+    if await user_repository.change_user_password(request_user, password_data.new_password):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     raise HTTPException(
         detail="Неверные данные",
@@ -194,15 +184,11 @@ async def get_user_by_id(
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
 ):
-    user = await get_object_or_404(db, User, User.id == user_id)
-    is_subscribed = await db.scalar(
-        select(UserSubscription)
-        .where(
-            UserSubscription.user_id == request_user.id,
-            UserSubscription.following_id == user.id,
-        )
+    user_repository = UserRepository(db)
+    user = await user_repository.get_user_by_id(user_id, request_user)
+    if user:
+        return await user_repository.to_shema(user)
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Такого пользователя нет."
     )
-    return {
-        **user.__dict__,
-        "is_subscribed": bool(is_subscribed),
-    }
