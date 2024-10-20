@@ -1,3 +1,6 @@
+from typing import Annotated
+
+from fastapi import Query
 from pydantic import (
     BaseModel,
     Field,
@@ -46,3 +49,9 @@ class RecipeSimpleRetriveSchema(BaseModel):
     name: str
     image: str | None
     cooking_time: int
+
+
+class RecipeFilters(BaseModel):
+    is_favorited: Annotated[bool | None, Query()] = None
+    is_in_shopping_cart: Annotated[bool | None, Query()] = None
+    author: Annotated[int | None, Query()] = None

@@ -21,7 +21,10 @@ from schemas.user import (
     UserAvatarSchema,
 )
 from models.user import User, UserSubscription
-from repositories.user_repositories import UserRepository
+from repositories.user_repositories import (
+    UserRepository,
+    UserSubscriptionRepository,
+)
 from routers.services.validators import validate_user_exist
 from routers.services.pagination import CustomPage, MyPage, MyParams
 from routers.services.utils import get_object_or_404
@@ -58,14 +61,14 @@ async def get_all_users(
     return CustomPage(**paginated_data.__dict__)
 
 
-@router.get("/me", response_model=UserRetrieveSchema, status_code=status.HTTP_200_OK)
+@router.get("/me/", response_model=UserRetrieveSchema, status_code=status.HTTP_200_OK)
 async def get_current_user(
     current_user: Annotated[User, Depends(current_user)]
 ):
     return current_user
 
 
-@router.put("/me/avatar", response_model=UserAvatarSchema, status_code=status.HTTP_200_OK)
+@router.put("/me/avatar/", response_model=UserAvatarSchema, status_code=status.HTTP_200_OK)
 async def creaete_user_avatar(
     avatar_data: UserAvatarSchema,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -75,7 +78,7 @@ async def creaete_user_avatar(
     return await user_repository.add_avatar(request_user, avatar_data)
 
 
-@router.delete("/me/avatar", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me/avatar/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user_avatar(
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)],
@@ -85,7 +88,7 @@ async def delete_user_avatar(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/set_password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/set_password/", status_code=status.HTTP_204_NO_CONTENT)
 async def change_user_password(
     password_data: UserPasswordChangeSchema,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -101,7 +104,7 @@ async def change_user_password(
 
 
 @router.get(
-    "/subscriptions",
+    "/subscriptions/",
     response_model=CustomPage[UserRetrieveSchema],
     status_code=status.HTTP_200_OK,
 )
@@ -126,7 +129,7 @@ async def get_user_subscriptions(
 
 
 @router.post(
-    "/{user_id}/subscribe",
+    "/{user_id}/subscribe/",
     response_model=UserRetrieveSchema,
     status_code=status.HTTP_201_CREATED,
 )
@@ -135,16 +138,12 @@ async def subscribe_user(
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)]
 ):
-    subscribe_target = await get_object_or_404(db, User, User.id == user_id)
+    subscription_repository = UserSubscriptionRepository(db)
+    target_user = await get_object_or_404(db, User, User.id == user_id)
     try:
-        subscription = UserSubscription(
-            user_id=request_user.id,
-            following_id=subscribe_target.id,
-        )
-        db.add(subscription)
-        await db.commit()
+        await subscription_repository.follow_user(request_user, target_user)
         return {
-            **subscribe_target.__dict__,
+            **target_user.__dict__,
             "is_subscribed": True,
         }
     except IntegrityError:
@@ -154,23 +153,15 @@ async def subscribe_user(
         )
 
 
-@router.delete("/{user_id}/subscribe", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{user_id}/subscribe/", status_code=status.HTTP_204_NO_CONTENT)
 async def unsubscribe_user(
     user_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
     request_user: Annotated[User, Depends(current_user)]
 ):
+    subscription_repository = UserSubscriptionRepository(db)
     target_user = await get_object_or_404(db, User, User.id == user_id)
-    following = await db.scalar(
-        select(UserSubscription)
-        .where(
-            UserSubscription.user_id == request_user.id,
-            UserSubscription.following_id == target_user.id,
-        )
-    )
-    if following:
-        await db.delete(following)
-        await db.commit()
+    if await subscription_repository.unfollow(request_user, target_user):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
@@ -178,7 +169,7 @@ async def unsubscribe_user(
     )
 
 
-@router.get("/{user_id}", response_model=UserRetrieveSchema, status_code=status.HTTP_200_OK)
+@router.get("/{user_id}/", response_model=UserRetrieveSchema, status_code=status.HTTP_200_OK)
 async def get_user_by_id(
     user_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
