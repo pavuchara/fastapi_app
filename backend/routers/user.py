@@ -9,7 +9,6 @@ from fastapi import (
     Response,
     HTTPException,
 )
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,8 +18,9 @@ from schemas.user import (
     UserRetrieveSchema,
     UserPasswordChangeSchema,
     UserAvatarSchema,
+    UserWithRecipesSchema,
 )
-from models.user import User, UserSubscription
+from models.user import User
 from repositories.user_repositories import (
     UserRepository,
     UserSubscriptionRepository,
@@ -105,7 +105,7 @@ async def change_user_password(
 
 @router.get(
     "/subscriptions/",
-    response_model=CustomPage[UserRetrieveSchema],
+    response_model=CustomPage[UserWithRecipesSchema],
     status_code=status.HTTP_200_OK,
 )
 async def get_user_subscriptions(
@@ -114,14 +114,11 @@ async def get_user_subscriptions(
     params: Annotated[MyParams, Depends()],
     request: Request,
 ):
-    query = (
-        select(User)
-        .join(UserSubscription, UserSubscription.following_id == User.id)
-        .where(UserSubscription.user_id == request_user.id)
-    )
+    user_repository = UserRepository(db)
+    query = await user_repository.get_users_query_with_recipes(request_user)
     paginated_data = await MyPage.create(query, db=db, params=params, request=request)
     items = [
-        {**user.__dict__, "is_subscribed": True}
+        {**user.__dict__, "is_subscribed": True, "recipes": user.recipe}
         for user in paginated_data.items
     ]
     paginated_data.items = items
