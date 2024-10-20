@@ -55,6 +55,17 @@ class UserRetrieveSchema(BaseModel):
     is_subscribed: bool = False
 
 
+class RecipeSimpleRetriveSchema(BaseModel):
+    id: int
+    name: str
+    image: str | None
+    cooking_time: int
+
+
+class UserWithRecipesSchema(UserRetrieveSchema):
+    recipes: list[RecipeSimpleRetriveSchema]
+
+
 class UserPasswordChangeSchema(BaseModel):
     new_password: str = Field(max_length=150)
     old_password: str = Field(max_length=150)

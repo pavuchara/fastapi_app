@@ -84,7 +84,7 @@ async def create_recipe(
     return recipe_responce_data
 
 
-@router.get("/{recope_id}/", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
+@router.get("/{recipe_id}/", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
 async def get_recipe(
     recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],

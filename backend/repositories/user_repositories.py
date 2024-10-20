@@ -116,6 +116,18 @@ class UserRepository:
             return users
         return {**query_result[0].__dict__, "is_subscribed": query_result[1]}
 
+    async def get_users_query_with_recipes(self, request_user: User):
+        query = (
+            select(User)
+            .join(UserSubscription, UserSubscription.following_id == User.id)
+            .where(UserSubscription.user_id == request_user.id)
+            .options(
+                selectinload(User.recipe),
+            )
+            .distinct()
+        )
+        return query
+
 
 class UserShoppingListRepository:
 
