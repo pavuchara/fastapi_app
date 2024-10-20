@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from pydantic import (
     BaseModel,
+    Field,
     ValidationInfo,
     field_validator,
 )
@@ -13,11 +14,11 @@ from models.services.validators import (
 
 
 class UserCreationSchema(BaseModel):
-    email: str
-    username: str
-    password: str
-    first_name: str
-    last_name: str
+    email: str = Field(max_length=254)
+    username: str = Field(max_length=150)
+    password: str = Field(max_length=150)
+    first_name: str = Field(max_length=150)
+    last_name: str = Field(max_length=150)
 
     @field_validator("email")
     @classmethod
@@ -55,9 +56,9 @@ class UserRetrieveSchema(BaseModel):
 
 
 class UserPasswordChangeSchema(BaseModel):
-    new_password: str
-    old_password: str
+    new_password: str = Field(max_length=150)
+    old_password: str = Field(max_length=150)
 
 
-class UserRetriveCreateAvatar(BaseModel):
+class UserAvatarSchema(BaseModel):
     avatar: str

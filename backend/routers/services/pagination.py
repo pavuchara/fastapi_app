@@ -44,13 +44,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_pagination import Page
 from fastapi_pagination.bases import AbstractParams, RawParams
-
 from fastapi_pagination.customization import (
     UseParams,
     CustomizedPage,
     UseExcludedFields,
     UseFieldsAliases,
 )
+
+from models.user import User
 
 T = TypeVar("T")
 
@@ -84,10 +85,29 @@ class MyPage(Page):
         request: Request,
     ) -> "MyPage":
         total = await db.scalar(select(func.count()).select_from(query.subquery()))
-
         items_query = query.limit(params.limit).offset(params.to_raw_params().offset)
         items = await db.scalars(items_query)
+        return await cls.__paginate(request, params, total, items.all())
 
+    @classmethod
+    async def create_with_repository(
+        cls,
+        params: MyParams,
+        request: Request,
+        request_user: User,
+        repository,
+    ) -> "MyPage":
+        total = await repository.get_total()
+        items_query = await repository.get_all_instanses_limit_offset(
+            request_user,
+            params.limit,
+            params.to_raw_params().offset,
+        )
+        items = await repository.to_shema(items_query, many=True)
+        return await cls.__paginate(request, params, total, items)
+
+    @classmethod
+    async def __paginate(cls, request, params, total, items):
         size = params.limit
         page = params.page
         total_pages = ceil(total / size) if total else 1
@@ -111,7 +131,7 @@ class MyPage(Page):
 
         return cls(
             total=total,
-            items=items.all(),
+            items=items,
             next=next_url,
             previous=previous_url,
             page=page,

@@ -1,9 +1,12 @@
-from pydantic import BaseModel
+from pydantic import (
+    BaseModel,
+    Field,
+)
 
 
 class TagCreateSchema(BaseModel):
-    name: str
-    slug: str
+    name: str = Field(max_length=32)
+    slug: str = Field(max_length=32)
 
 
 class TagRetrieveSchema(TagCreateSchema):
@@ -11,8 +14,8 @@ class TagRetrieveSchema(TagCreateSchema):
 
 
 class IngredientCreateSchema(BaseModel):
-    name: str
-    measurement_unit: str
+    name: str = Field(max_length=128)
+    measurement_unit: str = Field(max_length=32)
 
 
 class IngredientRetrieveSchema(IngredientCreateSchema):
