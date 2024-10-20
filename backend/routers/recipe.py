@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
+    Query,
     HTTPException,
     Response,
     Request,
@@ -16,6 +17,7 @@ from alchemy.db_depends import get_db
 from models.user import User
 from models.recipe import Recipe
 from schemas.recipe import (
+    RecipeFilters,
     RecipeCreateSchema,
     RecipeRetrieveSchema,
     RecipeSimpleRetriveSchema,
@@ -44,9 +46,11 @@ async def get_all_recipes(
     pagnination_query_params: Annotated[MyParams, Depends()],
     request: Request,
     request_user: Annotated[User, Depends(current_user)],
+    filters: RecipeFilters = Depends(),
+    tags: Annotated[list[str] | None, Query()] = None
 ):
     recipe_repository = RecipeRepository(db)
-    recipe_query = await recipe_repository.get_related_query_list()
+    recipe_query = await recipe_repository.get_related_query_list(filters, tags, request_user)
     paginated_data = await MyPage.create(
         recipe_query, db=db, params=pagnination_query_params, request=request
     )
@@ -80,7 +84,7 @@ async def create_recipe(
     return recipe_responce_data
 
 
-@router.get("/{recope_id}", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
+@router.get("/{recope_id}/", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
 async def get_recipe(
     recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -99,7 +103,7 @@ async def get_recipe(
     )
 
 
-@router.patch("/{recipe_id}", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
+@router.patch("/{recipe_id}/", response_model=RecipeRetrieveSchema, status_code=status.HTTP_200_OK)
 async def update_recipe(
     recipe_id: Annotated[int, Path()],
     recipe_request_data: RecipeCreateSchema,
@@ -128,7 +132,7 @@ async def update_recipe(
     return response_data
 
 
-@router.delete("/{recipe_id}")
+@router.delete("/{recipe_id}/")
 async def delete_recipe(
     recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -145,7 +149,7 @@ async def delete_recipe(
 
 
 @router.post(
-    "/{recipe_id}/shopping_cart",
+    "/{recipe_id}/shopping_cart/",
     response_model=RecipeSimpleRetriveSchema,
     status_code=status.HTTP_201_CREATED,
 )
@@ -180,7 +184,7 @@ async def delete_recipe_from_shopping_cart(
 
 
 @router.post(
-    "/{recipe_id}/favorite",
+    "/{recipe_id}/favorite/",
     response_model=RecipeSimpleRetriveSchema,
     status_code=status.HTTP_201_CREATED,
 )
@@ -201,7 +205,7 @@ async def add_recipe_to_favorite(
         )
 
 
-@router.delete("/{recipe_id}/favorite", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{recipe_id}/favorite/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_recipe_from_favorites(
     recipe_id: Annotated[int, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],

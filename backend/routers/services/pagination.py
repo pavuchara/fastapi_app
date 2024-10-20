@@ -59,7 +59,7 @@ T = TypeVar("T")
 class MyParams(BaseModel, AbstractParams):
     """Query параметры запроса для пагинации."""
     page: int = Query(1, ge=1, description="Page number")
-    limit: int = Query(10, ge=1, le=100, description="Page size")
+    limit: int = Query(10, ge=1, le=1000, description="Page size")
 
     def to_raw_params(self) -> RawParams:
         return RawParams(

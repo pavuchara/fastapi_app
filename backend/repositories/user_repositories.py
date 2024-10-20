@@ -173,3 +173,31 @@ class UserFavoritesRepository:
             await self.db.commit()
             return True
         return False
+
+
+class UserSubscriptionRepository:
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def follow_user(self, request_user: User, target_user: User) -> None:
+        subscription = UserSubscription(
+            user_id=request_user.id,
+            following_id=target_user.id,
+        )
+        self.db.add(subscription)
+        await self.db.commit()
+
+    async def unfollow(self, request_user: User, target_user: User) -> bool:
+        following = await self.db.scalar(
+            select(UserSubscription)
+            .where(
+                UserSubscription.user_id == request_user.id,
+                UserSubscription.following_id == target_user.id,
+            )
+        )
+        if following:
+            await self.db.delete(following)
+            await self.db.commit()
+            return True
+        return False

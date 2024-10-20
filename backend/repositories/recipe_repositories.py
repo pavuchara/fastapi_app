@@ -16,7 +16,7 @@ from models.recipe import (
     RecipeTag,
     RecipeIngredient,
 )
-from schemas.recipe import RecipeCreateSchema
+from schemas.recipe import RecipeCreateSchema, RecipeFilters
 
 
 class RecipeRepository:
@@ -24,7 +24,7 @@ class RecipeRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_related_query_list(self):
+    async def get_related_query_list(self, filters: RecipeFilters, tags, request_user: User):
         query = (
             select(Recipe)
             .options(
@@ -33,6 +33,20 @@ class RecipeRepository:
                 selectinload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient),
             )
         )
+        if filters.is_favorited is not None:
+            query = (
+                query.join(UserFavorites)
+                .filter(UserFavorites.user_id == request_user.id)
+            )
+        if filters.is_in_shopping_cart is not None:
+            query = (
+                query.join(UserShoppingList)
+                .filter(UserShoppingList.user_id == request_user.id)
+            )
+        if filters.author is not None:
+            query = query.filter(Recipe.author_id == filters.author)
+        if tags is not None:
+            query = query.join(RecipeTag).join(Tag).filter(Tag.slug.in_(tags))
         return query
 
     async def get_related_instance_by_id(self, recipe_id: int) -> Recipe | None:
