@@ -14,6 +14,7 @@ from routers.services.security import crypt_password, verify_password
 from schemas.user import (
     UserCreationSchema,
     UserAvatarSchema,
+    UserPasswordChangeSchema,
 )
 
 
@@ -71,9 +72,13 @@ class UserRepository:
         self.db.add(user)
         await self.db.commit()
 
-    async def change_user_password(self, user: User, new_password: str) -> bool:
-        if verify_password(new_password, user.password):
-            user.password = crypt_password(new_password)
+    async def change_user_password(
+        self,
+        user: User,
+        password_data: UserPasswordChangeSchema,
+    ) -> bool:
+        if verify_password(password_data.current_password, user.password):
+            user.password = crypt_password(password_data.new_password)
             self.db.add(user)
             await self.db.commit()
             return True

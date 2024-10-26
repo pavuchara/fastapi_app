@@ -68,7 +68,7 @@ class UserWithRecipesSchema(UserRetrieveSchema):
 
 class UserPasswordChangeSchema(BaseModel):
     new_password: str = Field(max_length=150)
-    old_password: str = Field(max_length=150)
+    current_password: str = Field(max_length=150)
 
 
 class UserAvatarSchema(BaseModel):
