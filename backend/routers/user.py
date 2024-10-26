@@ -95,7 +95,7 @@ async def change_user_password(
     request_user: Annotated[User, Depends(current_user)],
 ):
     user_repository = UserRepository(db)
-    if await user_repository.change_user_password(request_user, password_data.new_password):
+    if await user_repository.change_user_password(request_user, password_data):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     raise HTTPException(
         detail="Неверные данные",
